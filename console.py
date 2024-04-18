@@ -2,6 +2,7 @@
 """ Console Module """
 import cmd
 import sys
+import re
 from models.base_model import BaseModel
 from models.__init__ import storage
 from models.user import User
@@ -73,8 +74,8 @@ class HBNBCommand(cmd.Cmd):
                 pline = pline[2].strip()  # pline is now str
                 if pline:
                     # check for *args or **kwargs
-                    if pline[0] is '{' and pline[-1] is'}'\
-                            and type(eval(pline)) is dict:
+                    if pline[0] == '{' and pline[-1] =='}'\
+                            and type(eval(pline)) == dict:
                         _args = pline
                     else:
                         _args = pline.replace(',', '')
@@ -118,10 +119,28 @@ class HBNBCommand(cmd.Cmd):
         if not args:
             print("** class name missing **")
             return
-        elif args not in HBNBCommand.classes:
+        
+        # check if class name exists
+        pattern = re.compile(r'(\w+)=(\S+)')
+        args_class = pattern.split(args)[0].strip()
+        if args_class not in HBNBCommand.classes:
             print("** class doesn't exist **")
-            return
-        new_instance = HBNBCommand.classes[args]()
+
+        # # if it does create class
+        matched = pattern.findall(args)
+        args_dict = {key: value for key, value in matched}
+        for key, value in args_dict.items():
+            if value.startswith('"') or "_" in value:
+                args_dict[key] = value.strip('"').replace("_", " ")
+            elif "." in value:
+                args_dict[key] = float(value)
+            else:
+                args_dict[key] = int(value)
+        print(f"\n\nclass name is: {args_class}")
+        print(f"\n\ndictionary of argumants: {args_dict}")
+        # creation of new instance of the class name
+        # with all the parameters passed in the dictionary
+        new_instance = HBNBCommand.classes[args_class](args_dict)
         storage.save()
         print(new_instance.id)
         storage.save()
@@ -272,7 +291,7 @@ class HBNBCommand(cmd.Cmd):
                 args.append(v)
         else:  # isolate args
             args = args[2]
-            if args and args[0] is '\"':  # check for quoted arg
+            if args and args[0] == '\"':  # check for quoted arg
                 second_quote = args.find('\"', 1)
                 att_name = args[1:second_quote]
                 args = args[second_quote + 1:]
@@ -280,10 +299,10 @@ class HBNBCommand(cmd.Cmd):
             args = args.partition(' ')
 
             # if att_name was not quoted arg
-            if not att_name and args[0] is not ' ':
+            if not att_name and args[0] != ' ':
                 att_name = args[0]
             # check for quoted val arg
-            if args[2] and args[2][0] is '\"':
+            if args[2] and args[2][0] == '\"':
                 att_val = args[2][1:args[2].find('\"', 1)]
 
             # if att_val was not quoted arg
